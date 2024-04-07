@@ -360,6 +360,9 @@ public final class CircuitBreakerStateMachine implements CircuitBreaker {
         stateTransition(CLOSED, currentState -> new ClosedState());
     }
 
+    /**
+     * 状态机转换
+     */
     @Override
     public void transitionToOpenState() {
         stateTransition(OPEN,
@@ -618,6 +621,9 @@ public final class CircuitBreakerStateMachine implements CircuitBreaker {
         @Override
         public void onError(long duration, TimeUnit durationUnit, Throwable throwable) {
             // CircuitBreakerMetrics is thread-safe
+            /**
+             * 如果超过阈值，则会进行状态机的转换
+             */
             checkIfThresholdsExceeded(circuitBreakerMetrics.onError(duration, durationUnit));
         }
 
@@ -646,7 +652,7 @@ public final class CircuitBreakerStateMachine implements CircuitBreaker {
             return 0;
         }
 
-        /**
+        /**  如果超过阈值，则会进行状态机的转换
          * Transitions to open state when thresholds have been exceeded.
          *
          * @param result the Result

@@ -74,13 +74,13 @@ public class CircuitBreakerStateMachineTest {
         mockOnSlowCallRateExceededEventConsumer = (EventConsumer<CircuitBreakerOnSlowCallRateExceededEvent>) mock(EventConsumer.class);
         mockClock = MockClock.at(2019, 1, 1, 12, 0, 0, ZoneId.of("UTC"));
         circuitBreaker = new CircuitBreakerStateMachine("testName", custom()
-            .failureRateThreshold(50)
-            .permittedNumberOfCallsInHalfOpenState(4)
+            .failureRateThreshold(50) // 错误率50 ，
+            .permittedNumberOfCallsInHalfOpenState(4)// 半开状态下的滑动窗口 大小4
             .slowCallDurationThreshold(Duration.ofSeconds(4))
             .slowCallRateThreshold(50)
-            .maxWaitDurationInHalfOpenState(Duration.ofSeconds(1))
+            .maxWaitDurationInHalfOpenState(Duration.ofSeconds(1)) // 从半开状态到开路状态的时间间隔：HalfOpenState 到 toOpenState，
             .slidingWindow(20, 5, SlidingWindowType.TIME_BASED)
-            .waitDurationInOpenState(Duration.ofSeconds(5))
+            .waitDurationInOpenState(Duration.ofSeconds(5)) // 从open状态 到 halfOpen状态的间隔时间
             .ignoreExceptions(NumberFormatException.class)
             .currentTimestampFunction(clock -> clock.instant().toEpochMilli(), TimeUnit.MILLISECONDS)
             .build(), mockClock);

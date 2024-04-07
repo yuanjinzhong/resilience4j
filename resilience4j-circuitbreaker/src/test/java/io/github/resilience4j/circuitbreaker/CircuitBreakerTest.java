@@ -1090,10 +1090,10 @@ public class CircuitBreakerTest {
     public void shouldReturnFailureWithCircuitBreakerOpenExceptionWithFutures() throws Exception {
         // Given
         CircuitBreakerConfig circuitBreakerConfig = CircuitBreakerConfig.custom()
-            .slidingWindowSize(2)
-            .permittedNumberOfCallsInHalfOpenState(2)
-            .failureRateThreshold(50)
-            .waitDurationInOpenState(Duration.ofMillis(1000))
+            .slidingWindowSize(2)// 设置close 状态下的滑动窗口大小为2
+            .permittedNumberOfCallsInHalfOpenState(2)// 这个具体含义是在halfOpen状态下，设置滑动窗口大小为2;
+            .failureRateThreshold(50) // 失败阈值 50%
+            .waitDurationInOpenState(Duration.ofMillis(1000)) // 在open状态下有个定时任务，，过这么多秒之后会把状态变成halfOpen状态
             .build();
         CircuitBreaker circuitBreaker = CircuitBreaker.of("testName", circuitBreakerConfig);
 
@@ -1105,8 +1105,9 @@ public class CircuitBreakerTest {
         Supplier<Future<String>> futureSupplier = circuitBreaker
             .decorateFuture(helloWorldService::returnHelloWorldFuture);
 
-        // When
+        // When  记录两个错误，断路器打开， 因为close状态的窗口大小是2，且50%的错误率
         circuitBreaker.onError(0, TimeUnit.NANOSECONDS, new RuntimeException());
+        // onError方法里面会转换 断路器的状态
         circuitBreaker.onError(0, TimeUnit.NANOSECONDS, new RuntimeException());
 
         // Then

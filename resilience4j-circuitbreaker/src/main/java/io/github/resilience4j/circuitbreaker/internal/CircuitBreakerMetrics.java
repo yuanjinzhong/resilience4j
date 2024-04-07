@@ -65,11 +65,24 @@ class CircuitBreakerMetrics implements CircuitBreaker.Metrics {
         this(slidingWindowSize, circuitBreakerConfig.getSlidingWindowType(), circuitBreakerConfig, clock);
     }
 
+    /**
+     *  circuitBreakerConfig.getSlidingWindowSize()： close 状态下 对应的滑动窗口大小
+     * @param circuitBreakerConfig
+     * @param clock
+     * @return
+     */
     static CircuitBreakerMetrics forClosed(CircuitBreakerConfig circuitBreakerConfig, Clock clock) {
         return new CircuitBreakerMetrics(circuitBreakerConfig.getSlidingWindowSize(),
             circuitBreakerConfig, clock);
     }
 
+    /**
+     *
+     * @param permittedNumberOfCallsInHalfOpenState  半开状态下，对应的滑动窗口的大小
+     * @param circuitBreakerConfig
+     * @param clock
+     * @return
+     */
     static CircuitBreakerMetrics forHalfOpen(int permittedNumberOfCallsInHalfOpenState,
         CircuitBreakerConfig circuitBreakerConfig, Clock clock) {
         return new CircuitBreakerMetrics(permittedNumberOfCallsInHalfOpenState,
@@ -77,11 +90,17 @@ class CircuitBreakerMetrics implements CircuitBreaker.Metrics {
     }
 
     static CircuitBreakerMetrics forForcedOpen(CircuitBreakerConfig circuitBreakerConfig, Clock clock) {
+        /**
+         * 断路器强制打开状态下，滑动窗口的大小是0，也就是不需要统计数据，之后关闭
+         */
         return new CircuitBreakerMetrics(0, CircuitBreakerConfig.SlidingWindowType.COUNT_BASED,
             circuitBreakerConfig, clock);
     }
 
     static CircuitBreakerMetrics forDisabled(CircuitBreakerConfig circuitBreakerConfig, Clock clock) {
+        /**
+         * 断路器禁用的状态下，滑动窗口的大小是0
+         */
         return new CircuitBreakerMetrics(0, CircuitBreakerConfig.SlidingWindowType.COUNT_BASED,
             circuitBreakerConfig, clock);
     }

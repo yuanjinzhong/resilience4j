@@ -53,6 +53,7 @@ ext {
             assertj: "org.assertj:assertj-core:${assertjVersion}",
             logback: "ch.qos.logback:logback-classic:${logbackVersion}",
             mockito: "org.mockito:mockito-core:${mockitoVersion}",
+            mockito_inline: "org.mockito:mockito-inline:${mockitoVersion}",
             powermock: "org.powermock:powermock-core:${powermockVersion}",
             powermock_api_mockito: "org.powermock:powermock-api-mockito2:${powermockVersion}",
             powermock_module_junit4: "org.powermock:powermock-module-junit4:${powermockVersion}",

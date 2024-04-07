@@ -100,7 +100,9 @@ public class FixedSizeSlidingWindowMetricsTest {
         metrics.record(10000, TimeUnit.MILLISECONDS, Metrics.Outcome.SLOW_ERROR);
         metrics.record(100, TimeUnit.MILLISECONDS, Metrics.Outcome.SUCCESS);
         metrics.record(100, TimeUnit.MILLISECONDS, Metrics.Outcome.SUCCESS);
-        metrics.record(100, TimeUnit.MILLISECONDS, Metrics.Outcome.SUCCESS);
+        metrics.record(101, TimeUnit.MILLISECONDS, Metrics.Outcome.SUCCESS);
+
+       // metrics.record(9999, TimeUnit.MILLISECONDS, Metrics.Outcome.SUCCESS);
 
         Snapshot snapshot = metrics.getSnapshot();
         assertThat(snapshot.getTotalNumberOfCalls()).isEqualTo(5);
@@ -108,7 +110,7 @@ public class FixedSizeSlidingWindowMetricsTest {
         assertThat(snapshot.getTotalNumberOfSlowCalls()).isEqualTo(2);
         assertThat(snapshot.getNumberOfSlowSuccessfulCalls()).isEqualTo(1);
         assertThat(snapshot.getNumberOfSlowFailedCalls()).isEqualTo(1);
-        assertThat(snapshot.getTotalDuration().toMillis()).isEqualTo(20300);
+        assertThat(snapshot.getTotalDuration().toMillis()).isEqualTo(20301);
         assertThat(snapshot.getAverageDuration().toMillis()).isEqualTo(4060);
         assertThat(snapshot.getSlowCallRate()).isEqualTo(40f);
     }

@@ -20,7 +20,7 @@ package io.github.resilience4j.core.metrics;
 
 public class PartialAggregation extends AbstractAggregation {
 
-    private long epochSecond;
+    private long epochSecond;// 时间戳， 单位秒
 
     PartialAggregation(long epochSecond) {
         this.epochSecond = epochSecond;

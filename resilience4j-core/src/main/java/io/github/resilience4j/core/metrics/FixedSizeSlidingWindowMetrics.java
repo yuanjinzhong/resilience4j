@@ -38,10 +38,10 @@ import java.util.concurrent.TimeUnit;
  */
 public class FixedSizeSlidingWindowMetrics implements Metrics {
 
-    private final int windowSize;
-    private final TotalAggregation totalAggregation;
-    private final Measurement[] measurements;
-    int headIndex;
+    private final int windowSize; // 滑动窗口大小
+    private final TotalAggregation totalAggregation; // 该窗口的总计数据
+    private final Measurement[] measurements;//滑动窗口的桶
+    int headIndex; // 滑动的指针，每次➕1
 
     /**
      * Creates a new {@link FixedSizeSlidingWindowMetrics} with the given window size.
@@ -58,21 +58,35 @@ public class FixedSizeSlidingWindowMetrics implements Metrics {
         this.totalAggregation = new TotalAggregation();
     }
 
+    /**
+     * 线程安全的
+     * @param duration     the duration of the call
+     * @param durationUnit the time unit of the duration
+     * @param outcome      the outcome of the call
+     * @return
+     */
     @Override
     public synchronized Snapshot record(long duration, TimeUnit durationUnit, Outcome outcome) {
-        totalAggregation.record(duration, durationUnit, outcome);
-        moveWindowByOne().record(duration, durationUnit, outcome);
-        return new SnapshotImpl(totalAggregation);
+        totalAggregation.record(duration, durationUnit, outcome);//统计总数
+        moveWindowByOne().record(duration, durationUnit, outcome);// 将数据记录到当前滑动得到的桶
+        return new SnapshotImpl(totalAggregation);// 实时的快照
     }
 
     public synchronized Snapshot getSnapshot() {
         return new SnapshotImpl(totalAggregation);
     }
 
+    /**
+     * 每次滚动一位
+     * @return
+     */
     private Measurement moveWindowByOne() {
         moveHeadIndexByOne();
+        // 拿到当前headIndex对应的桶
         Measurement latestMeasurement = getLatestMeasurement();
+        // 把这个桶对应的数据，从总计里面清空
         totalAggregation.removeBucket(latestMeasurement);
+        // 清空该桶里面的数据
         latestMeasurement.reset();
         return latestMeasurement;
     }
@@ -87,6 +101,8 @@ public class FixedSizeSlidingWindowMetrics implements Metrics {
     }
 
     /**
+     * 这个算法就导致了，数组桶 是从 1到length-1 再到0 流转的
+     *
      * Moves the headIndex to the next bucket.
      */
     void moveHeadIndexByOne() {

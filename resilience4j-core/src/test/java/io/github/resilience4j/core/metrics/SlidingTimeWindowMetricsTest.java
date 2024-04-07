@@ -20,7 +20,10 @@ package io.github.resilience4j.core.metrics;
 
 import com.statemachinesystems.mockclock.MockClock;
 import org.junit.Test;
+import org.mockito.Mockito;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.util.concurrent.TimeUnit;
 
@@ -30,6 +33,9 @@ public class SlidingTimeWindowMetricsTest {
 
     @Test
     public void checkInitialBucketCreation() {
+        Clock clock1 = Clock.systemUTC();
+        long epochSecond2 = clock1.instant().getEpochSecond(); // clock的值其实是Clock.systemUTC()
+
         MockClock clock = MockClock.at(2019, 8, 4, 12, 0, 0, ZoneId.of("UTC"));
         SlidingTimeWindowMetrics metrics = new SlidingTimeWindowMetrics(5, clock);
 
@@ -316,4 +322,47 @@ public class SlidingTimeWindowMetricsTest {
         assertThat(result.getNumberOfFailedCalls()).isZero();
         assertThat(result.getTotalDuration().toMillis()).isEqualTo(100);
     }
+
+    @Test
+    public  void  测试滑动窗口滑动的逻辑(){
+
+        Clock clock = Mockito.mock(Clock.class);
+        Instant instant = Mockito.mock(Instant.class);
+        Mockito.when(clock.instant()).thenReturn(instant);
+
+        // 等价于相对时间1秒的时候创建滑动窗口
+        Mockito.when(clock.instant().getEpochSecond()).thenReturn(1L);
+
+        SlidingTimeWindowMetrics metrics = new SlidingTimeWindowMetrics(5, clock);
+
+        // 滑动窗口创建完，每个桶的时间是当前相对时间依次+1
+        PartialAggregation[] buckets = metrics.partialAggregations;
+        long epochSecond = clock.instant().getEpochSecond();
+        for (int i = 0; i < buckets.length; i++) {
+            PartialAggregation bucket = buckets[i];
+            assertThat(bucket.getEpochSecond()).isEqualTo(epochSecond + i);
+        }
+
+        metrics.record(100, TimeUnit.MILLISECONDS, Metrics.Outcome.ERROR);
+        for (int i = 0; i < buckets.length; i++) {
+            PartialAggregation bucket = buckets[i];
+            System.out.println(String.format("第%s个窗口的时间戳：%s",i,bucket.getEpochSecond()));
+        }
+
+        //clock.advanceBySeconds(6);
+        //等价于过了6秒又来了一个请求，整个滑动窗口会往后移动的
+        Mockito.when(clock.instant().getEpochSecond()).thenReturn(7L);
+        System.out.println("***********************************时间过了6秒，当前相对时间第7秒**********对比出窗口滑动的逻辑*************************");
+
+
+        metrics.record(100, TimeUnit.MILLISECONDS, Metrics.Outcome.ERROR);
+        // 滑动窗口创建完，每个桶的时间是当前相对时间依次+1
+        PartialAggregation[] buckets2 = metrics.partialAggregations;
+        for (int i = 0; i < buckets2.length; i++) {
+            PartialAggregation bucket = buckets2[i];
+            System.out.println(String.format("第%s个窗口的时间戳：%s",i,bucket.getEpochSecond()));
+        }
+
+    }
+
 }

@@ -45,11 +45,11 @@ import java.util.concurrent.TimeUnit;
  */
 public class SlidingTimeWindowMetrics implements Metrics {
 
-    final PartialAggregation[] partialAggregations;
-    private final int timeWindowSizeInSeconds;
-    private final TotalAggregation totalAggregation;
-    private final Clock clock;
-    int headIndex;
+    final PartialAggregation[] partialAggregations; // 滑动窗口的桶
+    private final int timeWindowSizeInSeconds;//滑动窗口大小
+    private final TotalAggregation totalAggregation;// 该窗口内的总计数据
+    private final Clock clock; // 时间
+    int headIndex; // 滑动的指针
 
     /**
      * Creates a new {@link SlidingTimeWindowMetrics} with the given clock and window of time.
@@ -62,10 +62,11 @@ public class SlidingTimeWindowMetrics implements Metrics {
         this.timeWindowSizeInSeconds = timeWindowSizeInSeconds;
         this.partialAggregations = new PartialAggregation[timeWindowSizeInSeconds];
         this.headIndex = 0;
-        long epochSecond = clock.instant().getEpochSecond();
+        // epochSecond 含义：时间戳，秒
+        long epochSecond = clock.instant().getEpochSecond(); // clock的值其实是Clock.systemUTC()
         for (int i = 0; i < timeWindowSizeInSeconds; i++) {
-            partialAggregations[i] = new PartialAggregation(epochSecond);
-            epochSecond++;
+            partialAggregations[i] = new PartialAggregation(epochSecond);// 把创建桶的时候的时间戳记录下来， 一开始就把时间记录下来了
+            epochSecond++;// 每个桶的间隔是1秒， 妙啊！！！
         }
         this.totalAggregation = new TotalAggregation();
     }
@@ -79,6 +80,7 @@ public class SlidingTimeWindowMetrics implements Metrics {
     }
 
     public synchronized Snapshot getSnapshot() {
+        // 之所以需要滑动窗口的原因是，取快照需要取最新的时间窗口里面的数据，则过期的时间的数据需要剔除，所以需要滑动（动词）窗口
         moveWindowToCurrentEpochSecond(getLatestPartialAggregation());
         return new SnapshotImpl(totalAggregation);
     }
@@ -95,17 +97,29 @@ public class SlidingTimeWindowMetrics implements Metrics {
     private PartialAggregation moveWindowToCurrentEpochSecond(
         PartialAggregation latestPartialAggregation) {
         long currentEpochSecond = clock.instant().getEpochSecond();
-        long differenceInSeconds = currentEpochSecond - latestPartialAggregation.getEpochSecond();
+        long differenceInSeconds = currentEpochSecond - latestPartialAggregation.getEpochSecond();// latestPartialAggregation.getEpochSecond()：根据headIndex（旧的）找出来的哪个桶的时间戳
+        // 比如currentEpochSecond 为1秒99 毫秒， latestPartialAggregation.getEpochSecond() 为1秒01毫秒
+        // 他们之间的差值在以秒为单位的时候，是0；也就是这个时间差在一秒之内，那么一秒之内，还是使用当前指针所指向的桶（注意headIndex是确定需要滑动的时候再递增的）
+        // 也就是在单位秒的时间内，所有的请求都是用的同一个桶记录
         if (differenceInSeconds == 0) {
             return latestPartialAggregation;
         }
+        // 时间大于一秒了，需要滑动了
         long secondsToMoveTheWindow = Math.min(differenceInSeconds, timeWindowSizeInSeconds);
         PartialAggregation currentPartialAggregation;
+
         do {
             secondsToMoveTheWindow--;
+            //移动得到下一个桶的下标
             moveHeadIndexByOne();
+            //根据下标得到的下一个桶
             currentPartialAggregation = getLatestPartialAggregation();
+            // 总计数据减去当前寻址到的桶上面的数据
             totalAggregation.removeBucket(currentPartialAggregation);
+            // secondsToMoveTheWindow：当前相对时间与headIndex（没有移动之前的下标）桶的时间间隔
+            // 当前相对时间-headIndex（没有移动之前的下标）桶的时间=secondsToMoveTheWindow
+            // 即： 当前相对时间-secondsToMoveTheWindow=headIndex下标桶的时间
+            // 在循环中secondsToMoveTheWindow在减减，则headIndex下标桶的时间在加加
             currentPartialAggregation.reset(currentEpochSecond - secondsToMoveTheWindow);
         } while (secondsToMoveTheWindow > 0);
         return currentPartialAggregation;
@@ -115,6 +129,8 @@ public class SlidingTimeWindowMetrics implements Metrics {
      * Returns the head partial aggregation of the circular array.
      *
      * @return the head partial aggregation of the circular array
+     *
+     * 根据headIndex取桶
      */
     private PartialAggregation getLatestPartialAggregation() {
         return partialAggregations[headIndex];
@@ -122,6 +138,8 @@ public class SlidingTimeWindowMetrics implements Metrics {
 
     /**
      * Moves the headIndex to the next bucket.
+     *
+     * 指针滑动，从1开始往后滑动，循环
      */
     void moveHeadIndexByOne() {
         this.headIndex = (headIndex + 1) % timeWindowSizeInSeconds;
