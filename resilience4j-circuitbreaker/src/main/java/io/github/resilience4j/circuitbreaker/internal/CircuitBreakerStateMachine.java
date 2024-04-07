@@ -719,6 +719,7 @@ public final class CircuitBreakerStateMachine implements CircuitBreaker {
             if (circuitBreakerConfig.isAutomaticTransitionFromOpenToHalfOpenEnabled()) {
                 ScheduledExecutorService scheduledExecutorService = schedulerFactory.getScheduler();
                 transitionToHalfOpenFuture = scheduledExecutorService
+                    //openState状态下有个定时任务，waitDurationInMillis 事件之后，将状态变为HALF_OPEN
                     .schedule(this::toHalfOpenState, waitDurationInMillis, TimeUnit.MILLISECONDS);
             } else {
                 transitionToHalfOpenFuture = null;
