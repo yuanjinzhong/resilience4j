@@ -474,8 +474,13 @@ public final class CircuitBreakerStateMachine implements CircuitBreaker {
         return eventProcessor;
     }
 
-    private interface CircuitBreakerState {
-
+    private interface CircuitBreakerState {// resilience中在每个状态下都会做的事情： 获取permission，都会 释放permission，
+                                           // 所以适合抽成状态接口，
+                                           // 交易状态类： initState -> 生成交易订单 ，effective->1、修改交易状态，2、修改生效时间
+                                           //            ExpiredState-> 1、修改交易状态，2、修改失效时间
+                                           //            Terminate-> 1、修改交易状态
+                                           // 可以直接抽象成doBiz()，也就是每个状态下都是doBiz(),不同的状态做不同的doBiz()
+                                           // 每个状态下的‘变化逻辑’是不一样的, 每个状态类只关心自己的“变化逻辑”, state machine 负责状态转换
         boolean tryAcquirePermission();
 
         void acquirePermission();
