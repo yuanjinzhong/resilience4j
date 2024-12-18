@@ -20,6 +20,7 @@ package io.github.resilience4j.core.metrics;
 
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * A {@link Metrics} implementation is backed by a sliding window that aggregates only the last
@@ -42,6 +43,8 @@ public class FixedSizeSlidingWindowMetrics implements Metrics {
     private final TotalAggregation totalAggregation; // 该窗口的总计数据
     private final Measurement[] measurements;//滑动窗口的桶
     int headIndex; // 滑动的指针，每次➕1
+
+    private final ReentrantLock lock = new ReentrantLock();
 
     /**
      * Creates a new {@link FixedSizeSlidingWindowMetrics} with the given window size.
@@ -66,14 +69,26 @@ public class FixedSizeSlidingWindowMetrics implements Metrics {
      * @return
      */
     @Override
-    public synchronized Snapshot record(long duration, TimeUnit durationUnit, Outcome outcome) {
-        totalAggregation.record(duration, durationUnit, outcome);//统计总数
-        moveWindowByOne().record(duration, durationUnit, outcome);// 将数据记录到当前滑动得到的桶
-        return new SnapshotImpl(totalAggregation);// 实时的快照
+    public Snapshot record(long duration, TimeUnit durationUnit, Outcome outcome) {
+        lock.lock();
+
+        try {
+            totalAggregation.record(duration, durationUnit, outcome);//统计总数
+            moveWindowByOne().record(duration, durationUnit, outcome);// 将数据记录到当前滑动得到的桶
+            return new SnapshotImpl(totalAggregation); // 实时的快照
+        } finally {
+            lock.unlock();
+        }
     }
 
-    public synchronized Snapshot getSnapshot() {
-        return new SnapshotImpl(totalAggregation);
+    public Snapshot getSnapshot() {
+        lock.lock();
+
+        try {
+            return new SnapshotImpl(totalAggregation);
+        } finally {
+            lock.unlock();
+        }
     }
 
     /**

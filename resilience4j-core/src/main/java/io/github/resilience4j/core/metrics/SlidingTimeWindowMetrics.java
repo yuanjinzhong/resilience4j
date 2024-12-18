@@ -21,6 +21,7 @@ package io.github.resilience4j.core.metrics;
 
 import java.time.Clock;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * A {@link Metrics} implementation is backed by a sliding time window that aggregates only the
@@ -51,6 +52,8 @@ public class SlidingTimeWindowMetrics implements Metrics {
     private final Clock clock; // 时间
     int headIndex; // 滑动的指针
 
+    private final ReentrantLock lock = new ReentrantLock();
+
     /**
      * Creates a new {@link SlidingTimeWindowMetrics} with the given clock and window of time.
      *
@@ -72,17 +75,29 @@ public class SlidingTimeWindowMetrics implements Metrics {
     }
 
     @Override
-    public synchronized Snapshot record(long duration, TimeUnit durationUnit, Outcome outcome) {
-        totalAggregation.record(duration, durationUnit, outcome);
-        moveWindowToCurrentEpochSecond(getLatestPartialAggregation())
-            .record(duration, durationUnit, outcome);
-        return new SnapshotImpl(totalAggregation);
+    public Snapshot record(long duration, TimeUnit durationUnit, Outcome outcome) {
+        lock.lock();
+
+        try {
+            totalAggregation.record(duration, durationUnit, outcome);
+            moveWindowToCurrentEpochSecond(getLatestPartialAggregation())
+                    .record(duration, durationUnit, outcome);
+            return new SnapshotImpl(totalAggregation);
+        } finally {
+            lock.unlock();
+        }
     }
 
-    public synchronized Snapshot getSnapshot() {
-        // 之所以需要滑动窗口的原因是，取快照需要取最新的时间窗口里面的数据，则过期的时间的数据需要剔除，所以需要滑动（动词）窗口
-        moveWindowToCurrentEpochSecond(getLatestPartialAggregation());
-        return new SnapshotImpl(totalAggregation);
+    public Snapshot getSnapshot() {
+        lock.lock();
+
+        try {
+            // 之所以需要滑动窗口的原因是，取快照需要取最新的时间窗口里面的数据，则过期的时间的数据需要剔除，所以需要滑动（动词）窗口
+            moveWindowToCurrentEpochSecond(getLatestPartialAggregation());
+            return new SnapshotImpl(totalAggregation);
+        } finally {
+            lock.unlock();
+        }
     }
 
     /**

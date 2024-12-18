@@ -19,17 +19,36 @@
 package io.github.resilience4j.core.metrics;
 
 import com.statemachinesystems.mockclock.MockClock;
+import io.github.resilience4j.core.JavaClockWrapper;
+import junitparams.JUnitParamsRunner;
+import junitparams.Parameters;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@RunWith(JUnitParamsRunner.class)
 public class SlidingTimeWindowMetricsTest {
+
+    private List<Object[]> defaultSlidingWindow() {
+        MockClock clock = MockClock.at(2019, 8, 4, 12, 0, 0, ZoneId.of("UTC"));
+
+        MockClock wrappableClock = MockClock.at(2019, 8, 4, 12, 0, 0, ZoneId.of("UTC"));
+        JavaClockWrapper wrappedClock = new JavaClockWrapper(wrappableClock);
+
+        return Arrays.asList(
+                new Object[]{new SlidingTimeWindowMetrics(5, clock), clock},
+                new Object[]{new LockFreeSlidingTimeWindowMetrics(5, wrappedClock), wrappableClock}
+        );
+    }
 
     @Test
     public void checkInitialBucketCreation() {
@@ -61,10 +80,8 @@ public class SlidingTimeWindowMetricsTest {
     }
 
     @Test
-    public void testRecordSuccess() {
-        MockClock clock = MockClock.at(2019, 8, 4, 12, 0, 0, ZoneId.of("UTC"));
-        Metrics metrics = new SlidingTimeWindowMetrics(5, clock);
-
+    @Parameters(method = "defaultSlidingWindow")
+    public void testRecordSuccess(Metrics metrics, MockClock clock) {
         Snapshot snapshot = metrics.record(100, TimeUnit.MILLISECONDS, Metrics.Outcome.SUCCESS);
         assertThat(snapshot.getTotalNumberOfCalls()).isEqualTo(1);
         assertThat(snapshot.getNumberOfSuccessfulCalls()).isEqualTo(1);
@@ -78,10 +95,8 @@ public class SlidingTimeWindowMetricsTest {
     }
 
     @Test
-    public void testRecordError() {
-        MockClock clock = MockClock.at(2019, 8, 4, 12, 0, 0, ZoneId.of("UTC"));
-        Metrics metrics = new SlidingTimeWindowMetrics(5, clock);
-
+    @Parameters(method = "defaultSlidingWindow")
+    public void testRecordError(Metrics metrics, MockClock clock) {
         Snapshot snapshot = metrics.record(100, TimeUnit.MILLISECONDS, Metrics.Outcome.ERROR);
         assertThat(snapshot.getTotalNumberOfCalls()).isEqualTo(1);
         assertThat(snapshot.getNumberOfSuccessfulCalls()).isZero();
@@ -95,10 +110,8 @@ public class SlidingTimeWindowMetricsTest {
     }
 
     @Test
-    public void testRecordSlowSuccess() {
-        MockClock clock = MockClock.at(2019, 8, 4, 12, 0, 0, ZoneId.of("UTC"));
-        Metrics metrics = new SlidingTimeWindowMetrics(5, clock);
-
+    @Parameters(method = "defaultSlidingWindow")
+    public void testRecordSlowSuccess(Metrics metrics, MockClock clock) {
         Snapshot snapshot = metrics
             .record(100, TimeUnit.MILLISECONDS, Metrics.Outcome.SLOW_SUCCESS);
         assertThat(snapshot.getTotalNumberOfCalls()).isEqualTo(1);
@@ -113,11 +126,8 @@ public class SlidingTimeWindowMetricsTest {
     }
 
     @Test
-    public void testSlowCallsPercentage() {
-
-        MockClock clock = MockClock.at(2019, 8, 4, 12, 0, 0, ZoneId.of("UTC"));
-        Metrics metrics = new SlidingTimeWindowMetrics(5, clock);
-
+    @Parameters(method = "defaultSlidingWindow")
+    public void testSlowCallsPercentage(Metrics metrics, MockClock clock) {
         metrics.record(10000, TimeUnit.MILLISECONDS, Metrics.Outcome.SLOW_SUCCESS);
         metrics.record(10000, TimeUnit.MILLISECONDS, Metrics.Outcome.SLOW_ERROR);
         metrics.record(100, TimeUnit.MILLISECONDS, Metrics.Outcome.SUCCESS);
@@ -161,10 +171,8 @@ public class SlidingTimeWindowMetricsTest {
     }
 
     @Test
-    public void shouldClearSlidingTimeWindowMetrics() {
-        MockClock clock = MockClock.at(2019, 8, 4, 12, 0, 0, ZoneId.of("UTC"));
-        Metrics metrics = new SlidingTimeWindowMetrics(5, clock);
-
+    @Parameters(method = "defaultSlidingWindow")
+    public void shouldClearSlidingTimeWindowMetrics(Metrics metrics, MockClock clock) {
         Snapshot snapshot = metrics.record(100, TimeUnit.MILLISECONDS, Metrics.Outcome.ERROR);
         assertThat(snapshot.getTotalNumberOfCalls()).isEqualTo(1);
         assertThat(snapshot.getNumberOfSuccessfulCalls()).isZero();
@@ -239,10 +247,8 @@ public class SlidingTimeWindowMetricsTest {
     }
 
     @Test
-    public void testSlidingTimeWindowMetrics() {
-        MockClock clock = MockClock.at(2019, 8, 4, 12, 0, 0, ZoneId.of("UTC"));
-        Metrics metrics = new SlidingTimeWindowMetrics(5, clock);
-
+    @Parameters(method = "defaultSlidingWindow")
+    public void testSlidingTimeWindowMetrics(Metrics metrics, MockClock clock) {
         Snapshot result = metrics.record(100, TimeUnit.MILLISECONDS, Metrics.Outcome.ERROR);
 
         assertThat(result.getTotalNumberOfCalls()).isEqualTo(1);
