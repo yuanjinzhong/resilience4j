@@ -30,6 +30,9 @@ import java.util.concurrent.atomic.LongAdder;
 
 import static io.github.resilience4j.core.metrics.Metrics.Outcome;
 
+/**
+ * 对底层滑动窗口的包装
+ */
 class CircuitBreakerMetrics implements CircuitBreaker.Metrics {
 
     private final Metrics metrics;
@@ -43,14 +46,14 @@ class CircuitBreakerMetrics implements CircuitBreaker.Metrics {
         CircuitBreakerConfig.SlidingWindowType slidingWindowType,
         CircuitBreakerConfig circuitBreakerConfig) {
         if (slidingWindowType == CircuitBreakerConfig.SlidingWindowType.COUNT_BASED) {
-            this.metrics = buildCountBasedMetrics(
+            this.metrics = buildCountBasedMetrics( // 创建基于计数的滑动窗口
                 slidingWindowSize,
                 circuitBreakerConfig.getSlidingWindowSynchronizationStrategy()
             );
             this.minimumNumberOfCalls = Math
                 .min(circuitBreakerConfig.getMinimumNumberOfCalls(), slidingWindowSize);
         } else {
-            this.metrics = buildTimeBasedMetrics(
+            this.metrics = buildTimeBasedMetrics( // 创建基于时间的滑动窗口
                 slidingWindowSize,
                 circuitBreakerConfig.getClock(),
                 circuitBreakerConfig.getSlidingWindowSynchronizationStrategy()
