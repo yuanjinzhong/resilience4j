@@ -47,14 +47,15 @@ public class FluxCircuitBreakerTest {
 
         StepVerifier.create(
             Flux.just("Event 1", "Event 2")
-                .transformDeferred(CircuitBreakerOperator.of(circuitBreaker)))
+                .transformDeferred(CircuitBreakerOperator.of(circuitBreaker)))//在流被订阅时，应用断路器
             .expectNext("Event 1")
             .expectNext("Event 2")
-            .verifyComplete();
+            .verifyComplete();// 内部会订阅流（subcribe方法）
 
+        // 由于这个流的订阅并没有发生异常，所以这里在flux里面元素被订阅完毕，才会执行断路器的onsuccess方法
         verify(circuitBreaker, times(1)).onSuccess(anyLong(), any(TimeUnit.class));
-        verify(circuitBreaker, never())
-            .onError(anyLong(), any(TimeUnit.class), any(Throwable.class));
+        // 由于这个流的订阅没有发生异常，所以onError方法不会被调用
+        verify(circuitBreaker, never()).onError(anyLong(), any(TimeUnit.class), any(Throwable.class));
     }
 
     @Test
@@ -69,8 +70,10 @@ public class FluxCircuitBreakerTest {
             .expectError(IOException.class)
             .verify(Duration.ofSeconds(1));
 
+        // 由于这个流的订阅发生了异常，所以会执行断路器的onError方法，执行一次
         verify(circuitBreaker, times(1))
             .onError(anyLong(), any(TimeUnit.class), any(IOException.class));
+        //由于这个流的订阅发生了异常，所以onResult方法不会被调用
         verify(circuitBreaker, never()).onResult(anyLong(), any(TimeUnit.class), any());
     }
 
